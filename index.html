@@ -1,0 +1,497 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Solicitud para el Servicio de Precursor Auxiliar</title>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    
+    <style>
+        * { box-sizing: border-box; }
+        
+        body { 
+            background-color: #f4f4f4; 
+            margin: 0; 
+            padding: 20px; 
+        }
+
+        #formulario-contenedor {
+            font-family: sans-serif; 
+            font-size: 22px; 
+            max-width: 800px; 
+            margin: 0 auto; 
+            padding: 30px; 
+            border: 1px solid #ddd; 
+            background: #ffffff; 
+            border-radius: 8px;
+        }
+        
+        h1 { text-align: center; border-bottom: 2px solid #000; padding-bottom: 10px; margin-bottom: 20px; font-size: 28px; } 
+        p.main-text { line-height: 1.6; text-align: justify; }
+        p.cite { font-style: italic; text-align: right; }
+        
+        form { display: grid; gap: 25px; } 
+        .form-group { display: flex; flex-direction: column; }
+        .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+        label { font-weight: bold; margin-bottom: 8px; }
+        
+        input[type="text"], input[type="date"], select { 
+            padding: 14px; 
+            font-size: 21px; 
+            border: 1px solid #ccc; 
+            border-radius: 4px; 
+            width: 100%; 
+            background-color: #F1F4FF; 
+        } 
+        
+        .checkbox-group { display: flex; align-items: center; gap: 15px; padding: 15px; border: 1px dashed #ccc; background: white; border-radius: 4px;}
+        input[type="checkbox"] { width: 30px; height: 30px; cursor: pointer; flex-shrink: 0; }
+        
+        .signature-group { text-align: center; width: 100%; }
+        canvas#signature-pad { 
+            border: 2px solid #000; 
+            background: #fff; 
+            width: 100%; 
+            height: 200px; 
+            cursor: crosshair; 
+            border-radius: 4px;
+            touch-action: none; 
+        }
+        .signature-controls { margin-top: 10px; text-align: right; }
+        
+        button { padding: 14px 24px; font-size: 22px; font-weight: bold; border-radius: 4px; cursor: pointer; transition: background 0.3s; }
+        button#submit-btn { background-color: #007bff; color: #fff; border: none; width: 100%; margin-top: 20px; }
+        button#submit-btn:disabled { background-color: #aaa; cursor: not-allowed; }
+        button#clear-btn { background-color: #dc3545; color: #fff; border: none; font-size: 19px; padding: 8px 15px; }
+        
+        .footer-note { margin-top: 40px; border-top: 1px solid #ccc; padding-top: 20px;}
+
+        /* ── Overlay de carga ── */
+        .loading-overlay { 
+            display: none; position: fixed; top: 0; left: 0; 
+            width: 100%; height: 100%; 
+            background: rgba(0,0,0,0.6); color: #fff; 
+            text-align: center; font-size: 2em; 
+            z-index: 1000; align-items: center; justify-content: center; 
+        }
+
+        /* ── Modal personalizado (reemplaza alert/confirm) ── */
+        #modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            background: rgba(0,0,0,0.55);
+            z-index: 2000;
+            align-items: center;
+            justify-content: center;
+        }
+        #modal-overlay.activo { display: flex; }
+
+        #modal-caja {
+            background: #fff;
+            border-radius: 10px;
+            padding: 32px 28px 24px;
+            max-width: 480px;
+            width: 90%;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.25);
+            font-family: sans-serif;
+            font-size: 18px;
+            line-height: 1.5;
+            text-align: center;
+        }
+        #modal-caja p { margin: 0 0 24px; white-space: pre-line; }
+        #modal-botones { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
+        #modal-botones button {
+            padding: 12px 28px;
+            font-size: 18px;
+            font-weight: bold;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            min-width: 120px;
+        }
+        #modal-btn-ok    { background: #007bff; color: #fff; }
+        #modal-btn-si    { background: #28a745; color: #fff; }
+        #modal-btn-no    { background: #6c757d; color: #fff; }
+
+        @media (max-width: 600px) {
+            body { padding: 0; background-color: #ffffff; }
+            #formulario-contenedor { margin: 0; padding: 15px; border: none; border-radius: 0; }
+            h1 { font-size: 25px; }
+            .form-row { grid-template-columns: 1fr; gap: 15px; }
+            p.main-text { text-align: left; } 
+            .checkbox-group { align-items: flex-start; } 
+        }
+    </style>
+</head>
+<body>
+
+    <div class="loading-overlay" id="loading"><p>Enviando solicitud...</p></div>
+
+    <!-- Modal personalizado -->
+    <div id="modal-overlay">
+        <div id="modal-caja">
+            <p id="modal-texto"></p>
+            <div id="modal-botones">
+                <button id="modal-btn-ok">Aceptar</button>
+                <button id="modal-btn-si">Sí</button>
+                <button id="modal-btn-no">No</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="formulario-contenedor">
+        <h1>SOLICITUD PARA EL SERVICIO DE PRECURSOR AUXILIAR</h1>
+
+        <p class="main-text">Debido a mi amor a Jehová y mi deseo de ayudar al prójimo a aprender acerca de él y sus amorosos propósitos, quisiera aumentar mi participación en el servicio del campo siendo precursor auxiliar durante el período indicado abajo:</p>
+
+        <form id="solicitudForm" novalidate>
+            <div class="form-group">
+                <label for="meses_solicitud">El (los) mes(es) de</label>
+                <input type="text" id="meses_solicitud" name="meses_solicitud" required placeholder="ej. Mayo, o Junio-Julio">
+            </div>
+
+            <div class="checkbox-group">
+                <input type="checkbox" id="continuo" name="continuo">
+                <label for="continuo">Marque la casilla si desea ser precursor auxiliar de continuo hasta nuevo aviso.</label>
+            </div>
+
+            <p class="main-text">Gozo de una buena reputación moral y tengo buenos hábitos. He hecho planes para satisfacer el requisito de horas. <span class="cite">(Vea Nuestro Ministerio del Reino de junio de 2013, página 2)</span>.</p>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="fecha_hoy">Fecha:</label>
+                    <input type="date" id="fecha_hoy" name="fecha_hoy" required>
+                </div>
+                <div class="form-group">
+                    <label for="nombre_molde">Nombre en letra de molde</label>
+                    <input type="text" id="nombre_molde" name="nombre_molde" required placeholder="Su nombre completo y apellidos">
+                </div>
+            </div>
+
+            <div class="signature-group">
+                <label>(Firma del solicitante)</label>
+                <canvas id="signature-pad"></canvas>
+                <div class="signature-controls">
+                    <button type="button" id="clear-btn">Limpiar Firma</button>
+                </div>
+            </div>
+
+        </form>
+
+        <div class="footer-note">
+            <p><strong>NOTA:</strong> Después de llenar esta solicitud, entréguela al coordinador del cuerpo de ancianos <span style="color: red;">(solo aplica si la entrega en papel)</span>. Si es posible, hágalo por lo menos una semana antes de la fecha en que desea comenzar el servicio de precursor auxiliar. No debe enviarse esta solicitud a la sucursal, sino más bien guardarse en los archivos de la congregación.</p>
+            <p>Formulario: S-205b-S &nbsp;&nbsp;&nbsp; Fecha: 4/15</p>
+        </div>
+
+        <div class="form-group" style="margin-top: 20px;">
+            <label for="superintendente">Superintendente de grupo</label>
+            <select id="superintendente" name="superintendente" required>
+                <option value="" disabled selected>Cargando lista...</option>
+            </select>
+        </div>
+
+        <button type="button" id="submit-btn" style="margin-top: 20px;">Enviar Solicitud</button>
+    </div>
+
+    <script>
+        const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbzLoLq9CyCRTWXreigXsd7JHfFvxpDzAdJcwqxKbk_dsLZuBsADFwPDl1Ij4Mmt_sIRSQ/exec";
+
+        // ══════════════════════════════════════════════
+        //  SISTEMA DE MODAL — reemplaza alert() y confirm()
+        //  Google Sites bloquea alert/confirm nativos.
+        // ══════════════════════════════════════════════
+        const modalOverlay = document.getElementById('modal-overlay');
+        const modalTexto   = document.getElementById('modal-texto');
+        const btnOk        = document.getElementById('modal-btn-ok');
+        const btnSi        = document.getElementById('modal-btn-si');
+        const btnNo        = document.getElementById('modal-btn-no');
+
+        function mostrarAlerta(mensaje) {
+            return new Promise(resolve => {
+                modalTexto.textContent = mensaje;
+                btnOk.style.display    = 'inline-block';
+                btnSi.style.display    = 'none';
+                btnNo.style.display    = 'none';
+                modalOverlay.classList.add('activo');
+                btnOk.onclick = () => {
+                    modalOverlay.classList.remove('activo');
+                    resolve();
+                };
+            });
+        }
+
+        function mostrarConfirm(mensaje) {
+            return new Promise(resolve => {
+                modalTexto.textContent = mensaje;
+                btnOk.style.display    = 'none';
+                btnSi.style.display    = 'inline-block';
+                btnNo.style.display    = 'inline-block';
+                modalOverlay.classList.add('activo');
+                btnSi.onclick = () => { modalOverlay.classList.remove('activo'); resolve(true);  };
+                btnNo.onclick = () => { modalOverlay.classList.remove('activo'); resolve(false); };
+            });
+        }
+
+        // ── Cargar superintendentes desde Hoja 2 de Google Sheets ──
+        const selectSup = document.getElementById("superintendente");
+        fetch(WEB_APP_URL, { method: 'GET', redirect: 'follow' })
+            .then(r => r.json())
+            .then(data => {
+                if (!data.nombres || data.nombres.length === 0) throw new Error('vacía');
+                selectSup.innerHTML = '<option value="" disabled selected>Seleccione un superintendente</option>';
+                data.nombres.forEach(nombre => {
+                    const opt = document.createElement("option");
+                    opt.value = nombre;
+                    opt.textContent = nombre;
+                    selectSup.appendChild(opt);
+                });
+            })
+            .catch(err => {
+                console.error('Error cargando superintendentes:', err);
+                selectSup.innerHTML = '<option value="" disabled selected>Error — recargue la página</option>';
+            });
+
+        const form           = document.getElementById('solicitudForm');
+        const submitBtn      = document.getElementById('submit-btn');
+        const clearBtn       = document.getElementById('clear-btn');
+        const loadingOverlay = document.getElementById('loading');
+        
+        // Fecha de hoy por defecto
+        const dateInput = document.getElementById('fecha_hoy');
+        const hoy = new Date();
+        dateInput.value = `${hoy.getFullYear()}-${String(hoy.getMonth()+1).padStart(2,'0')}-${String(hoy.getDate()).padStart(2,'0')}`;
+
+        // ── Canvas de firma ──
+        const canvas = document.getElementById('signature-pad');
+        const ctx    = canvas.getContext('2d');
+        let drawing  = false;
+
+        function resizeCanvas() {
+            const rect = canvas.getBoundingClientRect();
+            canvas.width  = rect.width;
+            canvas.height = rect.height;
+            ctx.strokeStyle = "#000";
+            ctx.lineWidth   = 2.5;
+            ctx.lineJoin    = 'round';
+            ctx.lineCap     = 'round';
+        }
+        let currentWindowWidth = window.innerWidth;
+        window.addEventListener('resize', () => {
+            if (window.innerWidth !== currentWindowWidth) {
+                currentWindowWidth = window.innerWidth;
+                resizeCanvas();
+            }
+        });
+        resizeCanvas();
+
+        function getCoords(e) {
+            const rect = canvas.getBoundingClientRect();
+            if (e.touches && e.touches.length > 0)
+                return { x: e.touches[0].clientX - rect.left, y: e.touches[0].clientY - rect.top };
+            return { x: e.clientX - rect.left, y: e.clientY - rect.top };
+        }
+        function startDraw(e) { drawing = true; const c = getCoords(e); ctx.beginPath(); ctx.moveTo(c.x, c.y); e.preventDefault(); }
+        function stopDraw()   { drawing = false; }
+        function onDraw(e)    { if (!drawing) return; const c = getCoords(e); ctx.lineTo(c.x, c.y); ctx.stroke(); e.preventDefault(); }
+
+        canvas.addEventListener('mousedown',  startDraw);
+        canvas.addEventListener('mousemove',  onDraw);
+        window.addEventListener('mouseup',    stopDraw);
+        canvas.addEventListener('mouseout',   stopDraw);
+        canvas.addEventListener('touchstart', startDraw, {passive: false});
+        canvas.addEventListener('touchmove',  onDraw,    {passive: false});
+        canvas.addEventListener('touchend',   stopDraw);
+
+        clearBtn.addEventListener('click', () => ctx.clearRect(0, 0, canvas.width, canvas.height));
+
+        function isCanvasBlank(c) {
+            const blank = document.createElement('canvas');
+            blank.width = c.width; blank.height = c.height;
+            return c.toDataURL() === blank.toDataURL();
+        }
+
+        // ── Envío ──
+        submitBtn.addEventListener('click', async function() {
+            const meses  = document.getElementById('meses_solicitud').value.trim();
+            const super_ = document.getElementById('superintendente').value.trim();
+            const fecha  = document.getElementById('fecha_hoy').value.trim();
+            const nombre = document.getElementById('nombre_molde').value.trim();
+
+            const faltantes = [];
+            if (!meses)                faltantes.push("El (los) mes(es) de");
+            if (!fecha)                faltantes.push("Fecha");
+            if (!nombre)               faltantes.push("Nombre en letra de molde");
+            if (!super_)               faltantes.push("Superintendente de grupo");
+            if (isCanvasBlank(canvas)) faltantes.push("Firma del solicitante");
+
+            if (faltantes.length > 0) {
+                await mostrarAlerta("Faltan los siguientes campos:\n\n- " + faltantes.join("\n- "));
+                return;
+            }
+
+            submitBtn.disabled = true;
+            submitBtn.style.backgroundColor = "#aaa";
+            submitBtn.innerText = "Enviando...";
+            loadingOverlay.style.display = 'flex';
+
+            const payload = {
+                applicantName:   nombre,
+                monthsOfService: meses,
+                isContinuous:    document.getElementById('continuo').checked,
+                dateOfForm:      fecha,
+                superintendent:  super_,
+                signature:       canvas.toDataURL("image/png")
+            };
+
+            try {
+                const r    = await fetch(WEB_APP_URL, { method: 'POST', body: JSON.stringify(payload) });
+                const data = await r.json();
+                loadingOverlay.style.display = 'none';
+
+                if (data.result === "success") {
+                    await mostrarAlerta("¡Solicitud enviada con éxito! Próximamente se le confirmará su aprobación. Muchas gracias por su deseo de aumentar su actividad en la predicación.");
+                    const quierePDF = await mostrarConfirm("¿Desea descargar una copia en PDF de los datos que acaba de llenar?");
+                    if (quierePDF) {
+                        generarPDF(nombre);
+                    } else {
+                        location.reload();
+                    }
+                } else {
+                    await mostrarAlerta("Error al enviar: " + data.message);
+                    submitBtn.disabled = false;
+                    submitBtn.style.backgroundColor = "#007bff";
+                    submitBtn.innerText = "Enviar Solicitud";
+                }
+            } catch(err) {
+                loadingOverlay.style.display = 'none';
+                console.error(err);
+                await mostrarAlerta("Error de conexión. Intente de nuevo.");
+                submitBtn.disabled = false;
+                submitBtn.style.backgroundColor = "#007bff";
+                submitBtn.innerText = "Enviar Solicitud";
+            }
+        });
+
+        // ────────────────────────────────────────────────
+        //  GENERACIÓN DE PDF — estrategia: clon invisible
+        // ────────────────────────────────────────────────
+        function generarPDF(nombre) {
+            const firmaDataURL  = canvas.toDataURL("image/png");
+            const valoresCampos = {};
+            document.querySelectorAll('#formulario-contenedor input[type="text"], #formulario-contenedor input[type="date"]')
+                .forEach(inp => { valoresCampos[inp.id] = inp.value; });
+            const continuoChecked   = document.getElementById('continuo').checked;
+            const superSeleccionado = document.getElementById('superintendente').value;
+
+            const ANCHO = 794;
+            const clon  = document.getElementById('formulario-contenedor').cloneNode(true);
+
+            Object.assign(clon.style, {
+                position:     'fixed',
+                top:          '-99999px',
+                left:         '0',
+                width:        ANCHO + 'px',
+                maxWidth:     ANCHO + 'px',
+                padding:      '30px',
+                fontSize:     '15.5px',
+                lineHeight:   '1.5',
+                background:   '#ffffff',
+                border:       'none',
+                borderRadius: '0',
+                margin:       '0',
+                zIndex:       '-1',
+                overflow:     'visible'
+            });
+
+            const formClon = clon.querySelector('form');
+            if (formClon) formClon.style.gap = '13px';
+
+            const footerClon = clon.querySelector('.footer-note');
+            if (footerClon) footerClon.style.marginTop = '15px';
+
+            clon.querySelectorAll('button').forEach(b => b.style.display = 'none');
+
+            // Ocultar también el modal si quedó clonado
+            const modalClon = clon.querySelector('#modal-overlay');
+            if (modalClon) modalClon.style.display = 'none';
+
+            Object.entries(valoresCampos).forEach(([id, val]) => {
+                const inp = clon.querySelector('#' + id);
+                if (inp) { inp.value = val; inp.setAttribute('value', val); }
+            });
+            const continuoClon = clon.querySelector('#continuo');
+            if (continuoClon) continuoClon.checked = continuoChecked;
+
+            const superClon = clon.querySelector('#superintendente');
+            if (superClon) {
+                superClon.innerHTML = '';
+                Array.from(document.getElementById('superintendente').options).forEach(opt => {
+                    const newOpt = document.createElement('option');
+                    newOpt.value = opt.value;
+                    newOpt.textContent = opt.textContent;
+                    newOpt.selected = (opt.value === superSeleccionado);
+                    superClon.appendChild(newOpt);
+                });
+            }
+
+            const canvasClon = clon.querySelector('#signature-pad');
+            if (canvasClon) {
+                const alturaProporcion = Math.round((canvas.height / canvas.width) * (ANCHO - 60));
+                const imgFirma = document.createElement('img');
+                imgFirma.src = firmaDataURL;
+                Object.assign(imgFirma.style, {
+                    display: 'block', width: '100%',
+                    height: alturaProporcion + 'px',
+                    border: '2px solid #000', borderRadius: '4px', background: '#fff'
+                });
+                canvasClon.parentNode.replaceChild(imgFirma, canvasClon);
+            }
+            const sigCtrl = clon.querySelector('.signature-controls');
+            if (sigCtrl) sigCtrl.style.display = 'none';
+
+            document.body.appendChild(clon);
+
+            requestAnimationFrame(() => {
+                setTimeout(() => {
+                    html2canvas(clon, {
+                        scale: 2, useCORS: true,
+                        scrollX: 0, scrollY: 0,
+                        windowWidth: ANCHO, width: ANCHO,
+                        backgroundColor: '#ffffff', logging: false
+                    }).then(snap => {
+                        document.body.removeChild(clon);
+
+                        const { jsPDF } = window.jspdf;
+                        const pdf  = new jsPDF({ unit: 'mm', format: 'a4', orientation: 'portrait' });
+                        const pW   = pdf.internal.pageSize.getWidth();
+                        const pH   = pdf.internal.pageSize.getHeight();
+                        const marg = 12;
+                        const maxW = pW - marg * 2;
+                        const maxH = pH - marg * 2;
+                        const ratio = snap.width / snap.height;
+
+                        let iW = maxW;
+                        let iH = iW / ratio;
+                        if (iH > maxH) { iH = maxH; iW = iH * ratio; }
+
+                        const offsetX = marg + (maxW - iW) / 2;
+                        pdf.addImage(snap.toDataURL('image/jpeg', 0.97), 'JPEG', offsetX, marg, iW, iH);
+                        pdf.save('Solicitud_Precursor_' + nombre.replace(/\s+/g, '_') + '.pdf');
+
+                        location.reload();
+                    }).catch(async err => {
+                        if (document.body.contains(clon)) document.body.removeChild(clon);
+                        console.error('html2canvas error:', err);
+                        await mostrarAlerta('No se pudo generar el PDF. Intente de nuevo.');
+                        location.reload();
+                    });
+                }, 300);
+            });
+        }
+    </script>
+</body>
+</html>
