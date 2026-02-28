@@ -423,7 +423,19 @@
 
             Object.entries(valoresCampos).forEach(([id, val]) => {
                 const inp = clon.querySelector('#' + id);
-                if (inp) { inp.value = val; inp.setAttribute('value', val); }
+                if (!inp) return;
+                // Si es el campo de fecha, convertir YYYY-MM-DD → MM/DD/YYYY
+                // y cambiar a type="text" para que html2canvas muestre el valor formateado
+                if (inp.type === 'date' && val) {
+                    const partes = val.split('-'); // [YYYY, MM, DD]
+                    const fechaFormateada = partes[1] + '/' + partes[2] + '/' + partes[0];
+                    inp.type = 'text';
+                    inp.value = fechaFormateada;
+                    inp.setAttribute('value', fechaFormateada);
+                } else {
+                    inp.value = val;
+                    inp.setAttribute('value', val);
+                }
             });
             const continuoClon = clon.querySelector('#continuo');
             if (continuoClon) continuoClon.checked = continuoChecked;
