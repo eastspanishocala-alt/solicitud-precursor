@@ -66,7 +66,8 @@
         button#submit-btn:disabled { background-color: #aaa; cursor: not-allowed; }
         button#clear-btn { background-color: #dc3545; color: #fff; border: none; font-size: 19px; padding: 8px 15px; }
         
-        .footer-note { margin-top: 40px; border-top: 1px solid #ccc; padding-top: 20px;}
+        .footer-note { margin-top: 40px; }
+        .footer-note hr { border: none; border-top: 1px solid #ccc; margin: 12px 0 0 0; }
 
         /* ── Overlay de carga ── */
         .loading-overlay { 
@@ -159,7 +160,7 @@
                 <label for="continuo">Marque la casilla si desea ser precursor auxiliar de continuo hasta nuevo aviso.</label>
             </div>
 
-            <p class="main-text">Gozo de una buena reputación moral y tengo buenos hábitos. He hecho planes para satisfacer el requisito de horas. <span class="cite">(Vea Nuestro Ministerio del Reino de junio de 2013, página 2)</span>.</p>
+            <p class="main-text">Gozo de una buena reputación moral y tengo buenos hábitos. He hecho planes para satisfacer el requisito de horas. <span class="cite">(<a href="https://wol.jw.org/es/wol/d/r4/lp-s/202009047" target="_blank" rel="noopener">Vea Nuestro Ministerio del Reino de junio de 2013, página 2</a>)</span>.</p>
 
             <div class="form-row">
                 <div class="form-group">
@@ -183,18 +184,19 @@
         </form>
 
         <div class="footer-note">
-            <p><strong>NOTA:</strong> Después de llenar esta solicitud, entréguela al coordinador del cuerpo de ancianos <span style="color: red;">(solo aplica si la entrega en papel)</span>. Si es posible, hágalo por lo menos una semana antes de la fecha en que desea comenzar el servicio de precursor auxiliar. No debe enviarse esta solicitud a la sucursal, sino más bien guardarse en los archivos de la congregación.</p>
-            <p>Formulario: S-205b-S &nbsp;&nbsp;&nbsp; Fecha: 4/15</p>
+            <p class="main-text"><strong>NOTA:</strong> Después de llenar esta solicitud, entréguela al coordinador del cuerpo de ancianos <span style="color: red;">(solo aplica si la entrega en papel)</span>. Si es posible, hágalo por lo menos una semana antes de la fecha en que desea comenzar el servicio de precursor auxiliar. No debe enviarse esta solicitud a la sucursal, sino más bien guardarse en los archivos de la congregación.</p>
+            <p class="main-text">Formulario: S-205b-S &nbsp;&nbsp;&nbsp; Fecha: 4/15</p>
+            <hr>
         </div>
 
-        <div class="form-group" style="margin-top: 20px;">
+        <div class="form-group" style="margin-top: 30px;">
             <label for="superintendente">Superintendente de grupo</label>
             <select id="superintendente" name="superintendente" required>
                 <option value="" disabled selected>Cargando lista...</option>
             </select>
         </div>
 
-        <button type="button" id="submit-btn" style="margin-top: 20px;">Enviar Solicitud</button>
+        <button type="button" id="submit-btn" style="margin-top: 30px; margin-bottom: 30px;">Enviar Solicitud</button>
     </div>
 
     <script>
